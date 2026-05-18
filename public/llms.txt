@@ -1,0 +1,9 @@
+# Sonhário
+
+> Diário de sonhos com interpretação acolhedora por IA.
+
+Sonhário é um espaço sereno para anotar os sonhos ao acordar e receber uma leitura simbólica e reflexiva. Um sonho por dia, uma edição por dia.
+
+## Pages
+- [Início](/): apresentação e como funciona
+- [Entrar](/login): login com email ou Google
