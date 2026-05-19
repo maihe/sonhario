@@ -79,7 +79,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Anote seus sonhos ao acordar e receba uma interpretação acolhedora. Um espaço sereno para cultivar o hábito do autoconhecimento onírico.",
       },
       { name: "author", content: "Sonhário" },
-      { property: "og:title", content: "Sonhário · Diário de sonhos" },
+      { property: "og:title", content: "Sonhário · Diário de sonhos com interpretação por IA" },
       {
         property: "og:description",
         content:
@@ -87,6 +87,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Sonhário · Diário de sonhos com interpretação por IA" },
+      { name: "description", content: "Dream Weaver AI encourages dream journaling and provides AI-powered interpretations of your nightly visions." },
+      { property: "og:description", content: "Dream Weaver AI encourages dream journaling and provides AI-powered interpretations of your nightly visions." },
+      { name: "twitter:description", content: "Dream Weaver AI encourages dream journaling and provides AI-powered interpretations of your nightly visions." },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),
