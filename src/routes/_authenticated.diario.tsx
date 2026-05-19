@@ -128,7 +128,7 @@ function DiarioPage() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              onSubmit={(e) => {
+              onSubmit={(e: React.FormEvent) => {
                 e.preventDefault();
                 if (editing && todayDream) {
                   editMut.mutate({ id: todayDream.id, content });
