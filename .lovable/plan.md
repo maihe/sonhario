@@ -1,65 +1,42 @@
-# Sonhário — Diário de Sonhos com Interpretação por IA
+## Contexto
 
-## Visão geral
+- No **preview** (`id-preview--...lovable.app`): login com Google e email/senha funcionam (logs confirmam sessão Google ativa e signup HTTP 200).
+- No **publicado** (`https://sonhario.lovable.app`): ao clicar em "Continuar com Google", a tela "não sai do lugar" — nenhum redirecionamento acontece.
 
-Site para incentivar o hábito de registrar sonhos ao acordar. O usuário escreve um sonho por dia, a IA devolve uma interpretação simbólica e reflexiva, e o histórico fica salvo na conta. Edição é limitada a 1 sonho por dia para conter custo de tokens.
+A causa mais provável **não é o código da aplicação** (mesmo bundle nos dois ambientes). As suspeitas principais são:
 
-## Estética
+1. O bundle publicado está desatualizado — a versão atual com Google SSO ainda não foi publicada ("Update" no diálogo de publicação não foi clicado depois das últimas mudanças de auth).
+2. O proxy do broker OAuth da Lovable (`/~oauth/initiate` → `oauth.lovable.app`) não está respondendo no domínio publicado, ou o domínio não está na allowlist de redirect do provedor gerenciado.
+3. Algum erro client-side silencioso (popup bloqueado, exceção engolida no `try/catch` do `signInGoogle`) que só ocorre no build de produção.
 
-- **Paleta Crepúsculo Suave**: fundo `#2d1b3d` (ameixa profundo), superfícies `#5a3a5e`, primário `#c9a0dc` (lavanda), acento `#f9a8a8` (pêssego/aurora).
-- **Tipografia**: Syne nos títulos (sensação onírica, contemporânea), Plus Jakarta Sans no corpo.
-- **Atmosfera**: gradientes lavanda→pêssego suaves, glow sutil, partículas/estrelas discretas no hero, transições lentas com framer-motion, bordas arredondadas generosas, copy poética em português.
+## Plano de investigação (sem mexer em código primeiro)
 
-## Páginas (rotas TanStack Start)
+1. Abrir `https://sonhario.lovable.app/login` com a ferramenta de browser, clicar em "Continuar com Google" e capturar:
+   - Console logs (erros JS, warnings de popup bloqueado, `lovable.auth` indefinido).
+   - Network requests (a chamada deveria ir para `/~oauth/initiate` e seguir redirect para `oauth.lovable.app` → `accounts.google.com`).
+2. Verificar se o build publicado contém a integração `@/integrations/lovable` ou se foi publicado **antes** dela existir (re-publicar é a correção se sim).
+3. Conferir os logs de auth do backend filtrados pelo domínio publicado, para ver se chega alguma tentativa.
 
-- `/` — Landing pública: hero "Anote seus sonhos, descubra o que dormem com você", convite ao registro, CTA para entrar/criar conta. SEO completo.
-- `/login` — Email/senha + botão "Entrar com Google" (via broker Lovable).
-- `/_authenticated/diario` — Tela principal. Mostra:
-  - Se ainda não registrou hoje: editor grande, prompt acolhedor, botão "Registrar sonho".
-  - Se já registrou: card do sonho de hoje + interpretação da IA + botão "Editar" (habilitado apenas se ainda não usou a edição diária).
-- `/_authenticated/historico` — Lista cronológica reversa dos sonhos, cada item expansível com texto + interpretação. Botão de editar aparece apenas no sonho de hoje, e só se ainda não houve edição hoje.
-- `/_authenticated/conta` — Logout e dados básicos.
+## Correção em código (só se a investigação apontar)
 
-## Fluxo da IA
+Dependendo do resultado, uma destas (escopo cirúrgico, só em `src/routes/login.tsx`):
 
-- Edge: `createServerFn` `interpretarSonho` protegido por `requireSupabaseAuth`.
-- Modelo: `google/gemini-3-flash-preview` (default, mais barato) via Lovable AI Gateway.
-- Prompt do sistema (no servidor, nunca no cliente): instrui a IA a tratar o input como relato de sonho, oferecer leitura mista — símbolos/arquétipos + reflexão emocional acolhedora —, em português, tom inspirador, 2–4 parágrafos curtos, sem diagnóstico clínico, sem afirmações categóricas.
-- Tratar `429` (limite) e `402` (créditos) retornando mensagem amigável.
+- **Logging defensivo**: o `catch` atual em `signInGoogle` só mostra `err.message`; adicionar `console.error(err)` para o erro real aparecer na sessão do usuário e nos próximos logs.
+- **Tratar `result.redirected = false` sem tokens**: se o broker retornar um estado intermediário sem `error` nem `redirected`, o código atual chama `navigate({ to: "/diario" })` sem sessão — adicionar guarda explícita e mostrar toast.
+- **Fallback de `redirect_uri`**: garantir que `window.location.origin` no momento do clique corresponde exatamente a `https://sonhario.lovable.app` (sem trailing slash, sem path) — já é o caso, mas confirmar.
 
-## Regras de negócio (impostas no servidor)
+## Correção fora de código (provavelmente a real)
 
-1. **1 sonho por dia**: chave única `(user_id, dream_date)` com `dream_date = (created_at AT TIME ZONE 'America/Sao_Paulo')::date`. Server fn `criarSonho` rejeita se já existir.
-2. **1 edição por dia**: cada sonho tem `edits_used_today` e `last_edit_date`. Server fn `editarSonho` só permite se `last_edit_date < hoje`, e só sobre o sonho de hoje. Reinterpreta com a IA e atualiza o registro.
-3. RLS: usuário só lê/escreve seus próprios sonhos.
+- Se o problema for "bundle antigo publicado": instruir o usuário a clicar em **Publish → Update** e re-testar.
+- Se o problema for allowlist do domínio publicado no provedor gerenciado: o domínio `*.lovable.app` já é coberto automaticamente, mas se houver custom domain ou se o broker estiver com problema, abrir as configurações de Cloud → Authentication Settings → Google para validar.
 
-## Dados (Lovable Cloud)
+## Entregáveis
 
-Tabela `dreams`:
-- `id uuid pk`
-- `user_id uuid → auth.users`
-- `dream_date date` (timezone São Paulo)
-- `content text`
-- `interpretation text`
-- `last_edit_date date null`
-- `created_at`, `updated_at`
-- unique `(user_id, dream_date)`
-- RLS: `auth.uid() = user_id`
+- Diagnóstico claro de onde o fluxo trava no publicado (com prints/logs).
+- Se for código: PR pequeno em `src/routes/login.tsx` adicionando logging e guarda.
+- Se for infraestrutura/publicação: instruções acionáveis (re-publicar e/ou abrir Cloud Auth Settings).
 
-## Detalhes técnicos
+## Fora do escopo
 
-- Autenticação: email/senha + Google via broker Lovable (`supabase--configure_social_auth` com `["google"]`). Sem tabela `profiles` (não precisamos de dados extras de perfil agora).
-- `attachSupabaseAuth` em `src/start.ts` para enviar bearer nas server fns.
-- `_authenticated` layout com `beforeLoad` que redireciona para `/login`.
-- Listener `onAuthStateChange` no root invalidando router + query cache.
-- Markdown opcional na renderização da interpretação (react-markdown).
-- Limites de input no cliente e servidor via Zod: conteúdo 20–4000 caracteres.
-
-## O que será habilitado
-
-- Lovable Cloud (banco + auth + server fns)
-- Lovable AI Gateway (interpretação)
-
-## Fora do escopo desta primeira versão
-
-- Exportar PDF, compartilhar sonho, busca por símbolos, estatísticas, recuperação de senha customizada, notificações.
+- Mudanças no `redirect_uri`, em `src/integrations/lovable/*` (arquivo gerado, proibido editar), ou em qualquer configuração de Supabase Auth no código.
+- Mudanças no fluxo de email/senha — esse caminho já funciona; a confirmação de email continua exigida (comportamento atual e seguro).
