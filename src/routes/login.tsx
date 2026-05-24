@@ -58,10 +58,15 @@ function LoginPage() {
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin + "/diario",
       });
-      if (result.error) throw result.error;
+      if (result.error) {
+        console.error("[login] Google OAuth error:", result.error);
+        throw result.error;
+      }
       if (result.redirected) return;
+      // Sem erro e sem redirecionamento — sessão veio direto (raro).
       navigate({ to: "/diario" });
     } catch (err) {
+      console.error("[login] signInGoogle failed:", err);
       toast.error(err instanceof Error ? err.message : "Falha ao entrar com Google.");
       setLoading(false);
     }
