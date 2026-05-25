@@ -56,7 +56,7 @@ function HistoricoPage() {
   );
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12 sm:py-16">
+    <div className="mx-auto max-w-5xl px-6 py-12 sm:py-16">
       <motion.header
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -91,7 +91,7 @@ function HistoricoPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="glass rounded-3xl p-4 sm:p-6 flex justify-center"
+          className="glass rounded-3xl p-6 sm:p-10 w-full"
         >
           <Calendar
             mode="single"
@@ -103,7 +103,8 @@ function HistoricoPage() {
             modifiers={{ hasDream: dreamDates }}
             disabled={(d) => !dreamMap.has(isoFromDate(d))}
             showOutsideDays={false}
-            className="pointer-events-auto [--cell-size:2.75rem] sm:[--cell-size:3rem]"
+            className="pointer-events-auto w-full [--cell-size:3.25rem] sm:[--cell-size:4rem] lg:[--cell-size:4.5rem]"
+            classNames={{ root: "w-full", table: "w-full" }}
             components={{
               DayButton: (props: React.ComponentProps<typeof DayButton>) => {
                 const iso = isoFromDate(props.day.date);
