@@ -19,8 +19,9 @@ type Dream = {
   id: string;
   dream_date: string;
   content: string;
-  interpretation: string;
+  interpretation: string | null;
   last_edit_date: string | null;
+  is_draft?: boolean;
 };
 
 function isoFromDate(d: Date) {
