@@ -5,7 +5,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const TZ = "America/Sao_Paulo";
 
 function todayInSP(): string {
-  // YYYY-MM-DD in São Paulo timezone
   const fmt = new Intl.DateTimeFormat("en-CA", {
     timeZone: TZ,
     year: "numeric",
@@ -81,6 +80,53 @@ export const listDreams = createServerFn({ method: "GET" })
     return { dreams: data ?? [], today: todayInSP() };
   });
 
+export const saveDraft = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { content: string }) =>
+    z.object({ content: contentSchema }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const today = todayInSP();
+
+    const { data: existing } = await supabase
+      .from("dreams")
+      .select("id, is_draft")
+      .eq("user_id", userId)
+      .eq("dream_date", today)
+      .maybeSingle();
+
+    if (existing && !existing.is_draft) {
+      throw new Error("Você já publicou o sonho de hoje. Volte amanhã.");
+    }
+
+    if (existing) {
+      const { data: updated, error } = await supabase
+        .from("dreams")
+        .update({ content: data.content })
+        .eq("id", existing.id)
+        .eq("user_id", userId)
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      return { dream: updated };
+    }
+
+    const { data: inserted, error } = await supabase
+      .from("dreams")
+      .insert({
+        user_id: userId,
+        dream_date: today,
+        content: data.content,
+        interpretation: null,
+        is_draft: true,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return { dream: inserted };
+  });
+
 export const createDream = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { content: string }) =>
@@ -92,16 +138,32 @@ export const createDream = createServerFn({ method: "POST" })
 
     const { data: existing } = await supabase
       .from("dreams")
-      .select("id")
+      .select("id, is_draft")
       .eq("user_id", userId)
       .eq("dream_date", today)
       .maybeSingle();
 
-    if (existing) {
+    if (existing && !existing.is_draft) {
       throw new Error("Você já registrou um sonho hoje. Volte amanhã para anotar o próximo.");
     }
 
     const interpretation = await interpret(data.content);
+
+    if (existing) {
+      const { data: updated, error } = await supabase
+        .from("dreams")
+        .update({
+          content: data.content,
+          interpretation,
+          is_draft: false,
+        })
+        .eq("id", existing.id)
+        .eq("user_id", userId)
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      return { dream: updated };
+    }
 
     const { data: inserted, error } = await supabase
       .from("dreams")
@@ -110,6 +172,7 @@ export const createDream = createServerFn({ method: "POST" })
         dream_date: today,
         content: data.content,
         interpretation,
+        is_draft: false,
       })
       .select()
       .single();
