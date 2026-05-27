@@ -47,7 +47,9 @@ function HistoricoPage() {
 
   const dreamMap = useMemo(() => {
     const map = new Map<string, Dream>();
-    (data?.dreams ?? []).forEach((d: Dream) => map.set(d.dream_date, d));
+    (data?.dreams ?? [])
+      .filter((d: Dream) => !d.is_draft)
+      .forEach((d: Dream) => map.set(d.dream_date, d));
     return map;
   }, [data]);
 
