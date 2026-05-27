@@ -20,7 +20,8 @@ export type Database = {
           created_at: string
           dream_date: string
           id: string
-          interpretation: string
+          interpretation: string | null
+          is_draft: boolean
           last_edit_date: string | null
           updated_at: string
           user_id: string
@@ -30,7 +31,8 @@ export type Database = {
           created_at?: string
           dream_date: string
           id?: string
-          interpretation: string
+          interpretation?: string | null
+          is_draft?: boolean
           last_edit_date?: string | null
           updated_at?: string
           user_id: string
@@ -40,7 +42,8 @@ export type Database = {
           created_at?: string
           dream_date?: string
           id?: string
-          interpretation?: string
+          interpretation?: string | null
+          is_draft?: boolean
           last_edit_date?: string | null
           updated_at?: string
           user_id?: string

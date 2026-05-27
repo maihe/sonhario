@@ -19,8 +19,9 @@ type Dream = {
   id: string;
   dream_date: string;
   content: string;
-  interpretation: string;
+  interpretation: string | null;
   last_edit_date: string | null;
+  is_draft?: boolean;
 };
 
 function isoFromDate(d: Date) {
@@ -46,7 +47,9 @@ function HistoricoPage() {
 
   const dreamMap = useMemo(() => {
     const map = new Map<string, Dream>();
-    (data?.dreams ?? []).forEach((d: Dream) => map.set(d.dream_date, d));
+    (data?.dreams ?? [])
+      .filter((d: Dream) => !d.is_draft)
+      .forEach((d: Dream) => map.set(d.dream_date, d));
     return map;
   }, [data]);
 
@@ -133,7 +136,7 @@ function HistoricoPage() {
             <DreamCard
               date={selected.dream_date}
               content={selected.content}
-              interpretation={selected.interpretation}
+              interpretation={selected.interpretation ?? ""}
               edited={!!selected.last_edit_date}
             />
           )}

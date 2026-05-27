@@ -4,8 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Pencil, Moon, Send } from "lucide-react";
-import { createDream, editDream, listDreams } from "@/lib/dreams.functions";
+import { Pencil, Moon, Send, Save } from "lucide-react";
+import { createDream, editDream, listDreams, saveDraft } from "@/lib/dreams.functions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { DreamCard } from "@/components/DreamCard";
@@ -20,6 +20,7 @@ function DiarioPage() {
   const list = useServerFn(listDreams);
   const create = useServerFn(createDream);
   const edit = useServerFn(editDream);
+  const draft = useServerFn(saveDraft);
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -28,14 +29,21 @@ function DiarioPage() {
   });
 
   const todayDream = data?.dreams.find((d) => d.dream_date === data.today);
-  const canEditToday = todayDream && todayDream.last_edit_date !== data?.today;
+  const isDraft = !!todayDream?.is_draft;
+  const publishedToday = todayDream && !isDraft;
+  const canEditToday = publishedToday && todayDream.last_edit_date !== data?.today;
 
   const [content, setContent] = useState("");
   const [editing, setEditing] = useState(false);
 
+  // Prefill content when editing a published dream, or when a draft exists
   useEffect(() => {
-    if (todayDream && editing) setContent(todayDream.content);
-  }, [editing, todayDream]);
+    if (isDraft && todayDream) {
+      setContent(todayDream.content);
+    } else if (todayDream && editing) {
+      setContent(todayDream.content);
+    }
+  }, [editing, todayDream, isDraft]);
 
   const createMut = useMutation({
     mutationFn: (c: string) => create({ data: { content: c } }),
@@ -57,7 +65,17 @@ function DiarioPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const busy = createMut.isPending || editMut.isPending;
+  const draftMut = useMutation({
+    mutationFn: (c: string) => draft({ data: { content: c } }),
+    onSuccess: () => {
+      toast.success("Rascunho salvo. Você pode voltar a editar quando quiser.");
+      qc.invalidateQueries({ queryKey: ["dreams"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const busy = createMut.isPending || editMut.isPending || draftMut.isPending;
+  const showForm = !publishedToday || editing;
 
   return (
     <div className="relative">
@@ -71,14 +89,18 @@ function DiarioPage() {
         >
           <Moon className="h-7 w-7 text-dream-lavender mx-auto mb-4" />
           <h1 className="font-display text-4xl sm:text-5xl">
-            {todayDream && !editing
+            {publishedToday && !editing
               ? "O sonho de hoje"
-              : "Bom dia. O que você sonhou?"}
+              : isDraft
+                ? "Seu rascunho de hoje"
+                : "Bom dia. O que você sonhou?"}
           </h1>
           <p className="mt-3 text-muted-foreground text-sm">
-            {todayDream && !editing
+            {publishedToday && !editing
               ? "Volte amanhã para anotar o próximo."
-              : "Escreva enquanto a memória ainda está fresca."}
+              : isDraft
+                ? "Edite quando quiser. Quando publicar, a interpretação chega."
+                : "Escreva enquanto a memória ainda está fresca."}
           </p>
         </motion.header>
 
@@ -93,7 +115,7 @@ function DiarioPage() {
             >
               Carregando...
             </motion.div>
-          ) : todayDream && !editing ? (
+          ) : publishedToday && !editing ? (
             <motion.div
               key="today"
               initial={{ opacity: 0 }}
@@ -104,7 +126,7 @@ function DiarioPage() {
               <DreamCard
                 date={todayDream.dream_date}
                 content={todayDream.content}
-                interpretation={todayDream.interpretation}
+                interpretation={todayDream.interpretation ?? ""}
                 edited={todayDream.last_edit_date === data?.today}
               />
               {canEditToday ? (
@@ -122,7 +144,7 @@ function DiarioPage() {
                 </p>
               )}
             </motion.div>
-          ) : (
+          ) : showForm ? (
             <motion.form
               key="form"
               initial={{ opacity: 0, y: 12 }}
@@ -149,9 +171,13 @@ function DiarioPage() {
               />
               <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
                 <span>{content.length} / 4000</span>
-                <span>Um sonho por dia · uma edição por dia</span>
+                <span>
+                  {isDraft
+                    ? "Rascunho · edite à vontade"
+                    : "Um sonho por dia · uma edição por dia"}
+                </span>
               </div>
-              <div className="mt-5 flex gap-2">
+              <div className="mt-5 flex flex-col sm:flex-row gap-2">
                 {editing && (
                   <Button
                     type="button"
@@ -164,23 +190,39 @@ function DiarioPage() {
                     Cancelar
                   </Button>
                 )}
+                {!editing && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={busy || content.trim().length < 20}
+                    onClick={() => draftMut.mutate(content)}
+                    className="border-white/15 bg-white/5 hover:bg-white/10"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    {draftMut.isPending ? "Salvando..." : "Salvar rascunho"}
+                  </Button>
+                )}
                 <Button
                   type="submit"
                   disabled={busy || content.trim().length < 20}
                   className="flex-1 bg-gradient-dream text-primary-foreground hover:shadow-glow transition-all"
                 >
-                  {busy ? (
+                  {createMut.isPending || editMut.isPending ? (
                     "Interpretando..."
                   ) : (
                     <>
                       <Send className="h-4 w-4 mr-2" />
-                      {editing ? "Reinterpretar" : "Registrar sonho"}
+                      {editing
+                        ? "Reinterpretar"
+                        : isDraft
+                          ? "Publicar sonho"
+                          : "Registrar sonho"}
                     </>
                   )}
                 </Button>
               </div>
             </motion.form>
-          )}
+          ) : null}
         </AnimatePresence>
       </div>
     </div>
