@@ -136,7 +136,7 @@ function HistoricoPage() {
             <DreamCard
               date={selected.dream_date}
               content={selected.content}
-              interpretation={selected.interpretation}
+              interpretation={selected.interpretation ?? ""}
               edited={!!selected.last_edit_date}
             />
           )}
