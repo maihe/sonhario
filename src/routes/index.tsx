@@ -8,7 +8,7 @@ export const Route = createFileRoute("/")({
   component: Landing,
   head: () => ({
     meta: [
-      { title: "Sonhário · Anote seus sonhos, descubra o que dormem com você" },
+      { title: "Sonhário · Anote seus sonhos, descubra o que desperta dentro de você" },
       {
         name: "description",
         content:
@@ -44,7 +44,7 @@ function Landing() {
           >
             Anote seus sonhos,
             <br />
-            <span className="text-gradient-dream">descubra o que dormem com você.</span>
+            <span className="text-gradient-dream">descubra o que desperta dentro de você.</span>
           </motion.h1>
 
           <motion.p
