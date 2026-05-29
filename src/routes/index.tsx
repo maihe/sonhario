@@ -8,7 +8,7 @@ export const Route = createFileRoute("/")({
   component: Landing,
   head: () => ({
     meta: [
-      { title: "Sonhário · Anote seus sonhos, descubra o que dormem com você" },
+      { title: "Sonhário · Anote seus sonhos, descubra o que desperta dentro de você" },
       {
         name: "description",
         content:
