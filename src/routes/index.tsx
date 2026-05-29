@@ -44,7 +44,7 @@ function Landing() {
           >
             Anote seus sonhos,
             <br />
-            <span className="text-gradient-dream">descubra o que dormem com você.</span>
+            <span className="text-gradient-dream">descubra o que desperta dentro de você.</span>
           </motion.h1>
 
           <motion.p
